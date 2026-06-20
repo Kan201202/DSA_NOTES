@@ -75,6 +75,18 @@ export async function updateProblem(id: string, formData: FormData) {
     },
   });
 
+  if (solutionCode && solutionCode.trim().length >= 20) {
+    const baseUrl = process.env.APP_URL;
+    if (baseUrl) {
+      const qstash = new Client({ token: process.env.QSTASH_TOKEN! });
+      await qstash.publishJSON({
+        url: `${baseUrl}/api/jobs/ai-classify-problem`,
+        body: { problemId: id },
+        retries: 2,
+      });
+    }
+  }
+
   revalidatePath("/problems");
   revalidatePath(`/problems/${id}`);
 }

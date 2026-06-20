@@ -2,10 +2,19 @@ import { getOrCreateUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updateProblem, deleteProblem } from "../actions";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { Label } from "@workspace/ui/components/label";
+
+type Similar = {
+  id: string;
+  title: string;
+  platform: string;
+  platformId: string | null;
+  distance: number;
+};
 
 export default async function ProblemDetailPage({
   params,
@@ -25,6 +34,19 @@ export default async function ProblemDetailPage({
     where: { userId: user.id },
     orderBy: { name: "asc" },
   });
+
+  const similar = await prisma.$queryRawUnsafe<Similar[]>(
+    `SELECT id, title, platform, "platformId", embedding <=> (SELECT embedding FROM "Problem" WHERE id = $1) AS distance
+     FROM "Problem"
+     WHERE "userId" = $2
+       AND id != $1
+       AND embedding IS NOT NULL
+       AND (SELECT embedding FROM "Problem" WHERE id = $1) IS NOT NULL
+     ORDER BY distance ASC
+     LIMIT 3`,
+    id,
+    user.id
+  );
 
   const selectedTopicIds = new Set(problem.topics.map((t) => t.topicId));
   const update = updateProblem.bind(null, id);
@@ -124,8 +146,45 @@ export default async function ProblemDetailPage({
         <Button type="submit">Save</Button>
       </form>
 
+      {problem.aiSummary && (
+        <div className="mt-8 p-4 border rounded-md bg-muted/30">
+          <h3 className="text-sm font-semibold mb-2">AI Summary</h3>
+          <p className="text-sm text-muted-foreground">{problem.aiSummary}</p>
+        </div>
+      )}
+
+      {similar.length > 0 && (
+        <div className="mt-6">
+          <h3 className="text-sm font-semibold mb-3">
+            Similar problems you've worked on
+          </h3>
+          <div className="space-y-2">
+            {similar.map((s) => (
+              <Link
+                key={s.id}
+                href={`/problems/${s.id}`}
+                className="block p-3 border rounded-md hover:bg-accent transition"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {s.platform}
+                    {s.platformId ? ` ${s.platformId}` : ""}
+                  </span>
+                  <span className="font-medium">{s.title}</span>
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    {(1 - s.distance).toFixed(2)} similarity
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       <form action={del} className="mt-4">
-        <Button type="submit" variant="destructive">Delete problem</Button>
+        <Button type="submit" variant="destructive">
+          Delete problem
+        </Button>
       </form>
     </main>
   );
