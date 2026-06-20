@@ -8,7 +8,7 @@ export async function classifyProblem(input: {
   notes: string;
   code: string;
   availableTopics: { id: string; name: string }[];
-}): Promise<{ topicIds: string[]; summary: string }> {
+}): Promise<{ topicIds: string[]; summary: string; raw: string }> {
   const topicList = input.availableTopics.map((t) => `- ${t.name} (id: ${t.id})`).join("\n");
 
   const prompt = `You are classifying a competitive programming problem solution into algorithmic patterns from a user's personal library.
@@ -30,29 +30,39 @@ Return STRICT JSON with two fields:
 
 JSON only, no prose, no markdown fences.`;
 
-  const res = await genai.models.generateContent({
-    model: "gemini-2.0-flash",
-    contents: prompt,
-  });
-
-  const text = res.text ?? "";
-  const cleaned = text.replace(/```json|```/g, "").trim();
-
   try {
+    const res = await genai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: prompt,
+    });
+
+    const text = res.text ?? "";
+    console.log("[gemini classify] raw response:", text);
+
+    const cleaned = text.replace(/```json|```/g, "").trim();
+
     const parsed = JSON.parse(cleaned);
     const validIds = new Set(input.availableTopics.map((t) => t.id));
     const topicIds = (parsed.topicIds ?? []).filter((id: string) => validIds.has(id));
-    return { topicIds, summary: String(parsed.summary ?? "") };
-  } catch {
-    return { topicIds: [], summary: "" };
+    return { topicIds, summary: String(parsed.summary ?? ""), raw: text };
+  } catch (err) {
+    console.error("[gemini classify] FAILED:", err);
+    return { topicIds: [], summary: "", raw: String(err) };
   }
 }
 
 export async function embedProblem(text: string): Promise<number[]> {
-  const res = await genai.models.embedContent({
-    model: "gemini-embedding-001",
-    contents: text,
-    config: { outputDimensionality: 768 },
-  });
-  return res.embeddings?.[0]?.values ?? [];
+  try {
+    const res = await genai.models.embedContent({
+      model: "gemini-embedding-001",
+      contents: text,
+      config: { outputDimensionality: 768 },
+    });
+    const values = res.embeddings?.[0]?.values ?? [];
+    console.log("[gemini embed] got", values.length, "dimensions");
+    return values;
+  } catch (err) {
+    console.error("[gemini embed] FAILED:", err);
+    return [];
+  }
 }
