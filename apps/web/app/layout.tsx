@@ -1,5 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google"
 import { ClerkProvider, Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs"
+import Link from "next/link"
 
 import "@workspace/ui/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -20,7 +21,11 @@ export default function RootLayout({
       >
         <body>
           <ThemeProvider>
-            <header className="flex justify-end items-center gap-4 p-4">
+            <header className="flex items-center gap-4 p-4 border-b">
+              <nav className="flex-1 flex gap-4">
+                <Link href="/" className="text-sm hover:underline">Home</Link>
+                <Link href="/topics" className="text-sm hover:underline">Topics</Link>
+              </nav>
               <Show when="signed-out">
                 <SignInButton />
                 <SignUpButton />
