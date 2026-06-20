@@ -25,6 +25,7 @@ export default function RootLayout({
               <nav className="flex-1 flex gap-4">
                 <Link href="/" className="text-sm hover:underline">Home</Link>
                 <Link href="/topics" className="text-sm hover:underline">Topics</Link>
+                <Link href="/problems" className="text-sm hover:underline">Problems</Link>
               </nav>
               <Show when="signed-out">
                 <SignInButton />
