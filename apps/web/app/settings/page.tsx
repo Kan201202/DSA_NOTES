@@ -17,6 +17,20 @@ async function updateHandles(formData: FormData) {
   revalidatePath("/settings");
 }
 
+async function triggerSync() {
+  "use server";
+  const user = await getOrCreateUser();
+  if (!user.cfHandle) return;
+
+  const { Client } = await import("@upstash/qstash");
+  const qstash = new Client({ token: process.env.QSTASH_TOKEN! });
+  await qstash.publishJSON({
+    url: `${process.env.APP_URL}/api/jobs/sync-cf-submissions`,
+    body: { userId: user.id },
+    retries: 2,
+  });
+}
+
 export default async function SettingsPage() {
   const user = await getOrCreateUser();
   return (
@@ -32,6 +46,9 @@ export default async function SettingsPage() {
           <Input id="lcHandle" name="lcHandle" defaultValue={user.lcHandle ?? ""} />
         </div>
         <Button type="submit">Save</Button>
+      </form>
+      <form action={triggerSync} className="mt-8 pt-8 border-t">
+        <Button type="submit" variant="secondary">Sync CF submissions now</Button>
       </form>
     </main>
   );
