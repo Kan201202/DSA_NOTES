@@ -26,6 +26,7 @@ export default function RootLayout({
                 <Link href="/" className="text-sm hover:underline">Home</Link>
                 <Link href="/topics" className="text-sm hover:underline">Topics</Link>
                 <Link href="/problems" className="text-sm hover:underline">Problems</Link>
+                <Link href="/settings">Settings</Link>
               </nav>
               <Show when="signed-out">
                 <SignInButton />

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getOrCreateUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { Client } from "@upstash/qstash";
 
 export async function createProblem(formData: FormData) {
   const user = await getOrCreateUser();
@@ -19,6 +20,24 @@ export async function createProblem(formData: FormData) {
   const problem = await prisma.problem.create({
     data: { userId: user.id, title, platform, platformId, url, difficulty },
   });
+
+  // Enqueue async enrichment for Codeforces problems
+  if (platform === "CF" && platformId) {
+  const baseUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : process.env.APP_URL;
+
+  if (baseUrl) {
+    const qstash = new Client({ token: process.env.QSTASH_TOKEN! });
+    await qstash.publishJSON({
+      url: `${baseUrl}/api/jobs/enrich-cf-problem`,
+      body: { problemId: problem.id, platformId },
+      retries: 3,
+    });
+  } else {
+    console.log("[dev] Skipping QStash enqueue (no public URL)");
+  }
+}
 
   revalidatePath("/problems");
   redirect(`/problems/${problem.id}`);
