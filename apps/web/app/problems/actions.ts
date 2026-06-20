@@ -23,21 +23,19 @@ export async function createProblem(formData: FormData) {
 
   // Enqueue async enrichment for Codeforces problems
   if (platform === "CF" && platformId) {
-  const baseUrl = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : process.env.APP_URL;
+    const baseUrl = process.env.APP_URL;
 
-  if (baseUrl) {
-    const qstash = new Client({ token: process.env.QSTASH_TOKEN! });
-    await qstash.publishJSON({
-      url: `${baseUrl}/api/jobs/enrich-cf-problem`,
-      body: { problemId: problem.id, platformId },
-      retries: 3,
-    });
-  } else {
-    console.log("[dev] Skipping QStash enqueue (no public URL)");
+    if (baseUrl) {
+      const qstash = new Client({ token: process.env.QSTASH_TOKEN! });
+      await qstash.publishJSON({
+        url: `${baseUrl}/api/jobs/enrich-cf-problem`,
+        body: { problemId: problem.id, platformId },
+        retries: 3,
+      });
+    } else {
+      console.log("[dev] Skipping QStash enqueue (no APP_URL)");
+    }
   }
-}
 
   revalidatePath("/problems");
   redirect(`/problems/${problem.id}`);
