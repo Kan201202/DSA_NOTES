@@ -9,9 +9,95 @@ datasource db {
 }
 
 model User {
-  id        String   @id
+  id        String   @id // Clerk user ID
   email     String   @unique
   cfHandle  String?
   lcHandle  String?
   createdAt DateTime @default(now())
+
+  topics    Topic[]
+  problems  Problem[]
+  contests  Contest[]
+}
+
+model Topic {
+  id           String   @id @default(cuid())
+  userId       String
+  name         String
+  slug         String
+  theory       String?  // markdown — pure theory/notes
+  codeTemplate String?  // reusable code snippet
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problems     ProblemTopic[]
+
+  @@unique([userId, slug])
+  @@index([userId])
+}
+
+model Problem {
+  id               String    @id @default(cuid())
+  userId           String
+  platform         String    // "CF", "LC", "AC", "Other"
+  platformId       String?   // "1840C", "2055"
+  title            String
+  url              String?
+  difficulty       Int?
+  officialTags     String[]  @default([])
+
+  status           String    @default("todo") // todo, attempted, solved, to_revise
+  notes            String?   // per-problem markdown notes
+  solutionCode     String?
+  timeTakenMinutes Int?
+  solvedAt         DateTime?
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topics           ProblemTopic[]
+  contestProblems  ContestProblem[]
+
+  @@index([userId])
+}
+
+model ProblemTopic {
+  problemId String
+  topicId   String
+  problem   Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  topic     Topic   @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@id([problemId, topicId])
+}
+
+model Contest {
+  id         String    @id @default(cuid())
+  userId     String
+  platform   String
+  name       String
+  platformId String?
+  date       DateTime?
+  url        String?
+  createdAt  DateTime  @default(now())
+
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problems   ContestProblem[]
+
+  @@index([userId])
+}
+
+model ContestProblem {
+  id              String  @id @default(cuid())
+  contestId       String
+  problemId       String
+  solvedInContest Boolean @default(false)
+  upsolved        Boolean @default(false)
+  postMortem      String? // markdown — "why I failed this"
+
+  contest Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@unique([contestId, problemId])
 }
